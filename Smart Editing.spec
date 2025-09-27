@@ -1,18 +1,19 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+
 a = Analysis(
     ['smart_editing.py'],
     pathex=[],
     binaries=[],
-    datas=[('字幕导入/', '字幕导入/')],
-    hiddenimports=['pymiere', 'tkinter', 'subprocess', 'pyautogui', 'keyboard', 'pyperclip'],
+    datas=[('字幕导入', '字幕导入')],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
     noarchive=False,
+    optimize=0,
 )
-
 pyz = PYZ(a.pure)
 
 exe = EXE(
@@ -34,5 +35,4 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='icons/smart_editing.ico',
 )

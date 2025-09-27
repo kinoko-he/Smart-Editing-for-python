@@ -1,18 +1,19 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+
 a = Analysis(
-    ['smart_editing.py'],
+    ['字幕导入\\srt_subtitle_importer.py'],
     pathex=[],
     binaries=[],
-    datas=[('字幕导入/', '字幕导入/')],
-    hiddenimports=['pymiere', 'tkinter', 'subprocess', 'pyautogui', 'keyboard', 'pyperclip'],
+    datas=[],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[],
     noarchive=False,
+    optimize=0,
 )
-
 pyz = PYZ(a.pure)
 
 exe = EXE(
@@ -21,7 +22,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='Smart Editing',
+    name='字幕导入工具',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -34,5 +35,4 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='icons/smart_editing.ico',
 )

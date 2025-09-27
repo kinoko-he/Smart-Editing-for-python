@@ -120,7 +120,14 @@ class SmartEditingApp:
                                         text="刷新项目", 
                                         command=self.refresh_project,
                                         style='Dark.TButton')
-        self.refresh_button.pack(side=tk.LEFT)
+        self.refresh_button.pack(side=tk.LEFT, padx=(0, 10))
+        
+        # 字幕导入按钮
+        self.subtitle_import_button = ttk.Button(button_frame,
+                                               text="字幕导入",
+                                               command=self.open_subtitle_importer,
+                                               style='Dark.TButton')
+        self.subtitle_import_button.pack(side=tk.LEFT)
         
         # 进度条
         self.progress_var = tk.DoubleVar()
@@ -143,11 +150,23 @@ class SmartEditingApp:
         # 初始化按钮状态
         self.create_button.configure(state=tk.DISABLED)
         self.refresh_button.configure(state=tk.DISABLED)
+        # 字幕导入按钮始终可用，不依赖项目连接
+        self.subtitle_import_button.configure(state=tk.NORMAL)
         
         # 如果pymiere不可用，显示错误信息
         if not PYMIERE_AVAILABLE:
             self.log(f"错误: pymiere库未安装 - {PYMIERE_ERROR}")
             self.log("请运行: pip install pymiere")
+        else:
+            # 添加安装面板按钮
+            install_frame = ttk.Frame(main_frame, style='Dark.TFrame')
+            install_frame.pack(fill=tk.X, pady=(0, 10))
+            
+            self.install_panel_button = ttk.Button(install_frame,
+                                                  text="安装pymiere面板",
+                                                  command=self.install_pymiere_panel,
+                                                  style='Dark.TButton')
+            self.install_panel_button.pack(side=tk.LEFT, padx=(0, 10))
     
     def log(self, message):
         """添加日志信息"""
@@ -166,26 +185,80 @@ class SmartEditingApp:
         
         def connect():
             try:
+                # 首先检查pymiere面板是否已启动
+                self.log("正在检查pymiere面板状态...")
+                
+                # 尝试连接到pymiere
                 self.app = pymiere.objects.app
+                
+                # 检查连接是否成功
+                if not self.app:
+                    raise Exception("无法获取Premiere Pro应用对象")
+                
+                # 尝试获取项目
                 self.project = self.app.project
                 
-                if self.project:
+                if self.project and hasattr(self.project, 'name'):
                     project_name = self.project.name
-                    self.connection_label.configure(text=f"已连接: {project_name}")
-                    self.create_button.configure(state=tk.NORMAL)
-                    self.refresh_button.configure(state=tk.NORMAL)
-                    self.log(f"成功连接到项目: {project_name}")
+                    if project_name:
+                        self.connection_label.configure(text=f"已连接: {project_name}")
+                        self.create_button.configure(state=tk.NORMAL)
+                        self.refresh_button.configure(state=tk.NORMAL)
+                        self.log(f"成功连接到项目: {project_name}")
+                    else:
+                        raise Exception("项目名称为空，可能项目未正确加载")
                 else:
                     self.connection_label.configure(text="未找到打开的项目")
                     self.log("错误: 请在Premiere Pro中打开一个项目")
+                    self.log("提示: 确保项目已完全加载完成")
                     
             except Exception as e:
                 self.connection_label.configure(text="连接失败")
-                self.log(f"连接失败: {e}")
-                self.log("请确保Premiere Pro已启动并打开项目")
+                error_msg = str(e)
+                self.log(f"连接失败: {error_msg}")
+                
+                # 提供详细的故障排除指导
+                if "No connection could be established" in error_msg:
+                    self.log("━━━ 连接问题解决方案 ━━━")
+                    self.log("1. 确保Premiere Pro已启动并完全加载")
+                    self.log("2. 检查pymiere面板是否已安装:")
+                    self.log("   - 在PR中: 窗口 > 扩展 > pymiere")
+                    self.log("3. 如果没有pymiere扩展，需要安装:")
+                    self.log("   - 运行: python -c \"import pymiere; pymiere.exe_utils.install_extension()\"")
+                    self.log("4. 重启Premiere Pro后再试")
+                elif "项目" in error_msg:
+                    self.log("请确保在Premiere Pro中打开了一个项目")
+                else:
+                    self.log("请确保Premiere Pro已启动并打开项目")
         
         # 在新线程中连接，避免界面卡顿
         threading.Thread(target=connect, daemon=True).start()
+    
+    def install_pymiere_panel(self):
+        """安装pymiere面板"""
+        def install():
+            try:
+                self.log("开始安装pymiere面板...")
+                self.install_panel_button.configure(state=tk.DISABLED)
+                
+                # 尝试自动安装
+                import pymiere.exe_utils
+                pymiere.exe_utils.install_extension()
+                
+                self.log("pymiere面板安装完成!")
+                self.log("请重启Premiere Pro，然后在'窗口 > 扩展'中启用pymiere")
+                messagebox.showinfo("安装完成", "pymiere面板已安装!\n请重启Premiere Pro，然后在'窗口 > 扩展'中启用pymiere")
+                
+            except Exception as e:
+                self.log(f"自动安装失败: {e}")
+                self.log("━━━ 手动安装步骤 ━━━")
+                self.log("1. 运行命令: python -c \"import pymiere; pymiere.exe_utils.install_extension()\"")
+                self.log("2. 或者手动复制面板文件到CEP扩展目录")
+                messagebox.showerror("安装失败", f"自动安装失败: {e}\n请查看日志中的手动安装步骤")
+            finally:
+                self.install_panel_button.configure(state=tk.NORMAL)
+        
+        threading.Thread(target=install, daemon=True).start()
     
     def refresh_project(self):
         """刷新项目连接"""
@@ -627,6 +700,41 @@ class SmartEditingApp:
                 
         except Exception as e:
             self.log(f"序列归档时出错: {e}")
+    
+    def open_subtitle_importer(self):
+        """打开字幕导入工具"""
+        try:
+            import subprocess
+            import os
+            
+            # 获取字幕导入工具的路径
+            if getattr(sys, 'frozen', False):
+                # 如果是打包后的exe文件，启动独立的字幕导入exe
+                exe_dir = os.path.dirname(sys.executable)
+                subtitle_exe_path = os.path.join(exe_dir, "字幕导入工具.exe")
+                
+                if os.path.exists(subtitle_exe_path):
+                    subprocess.Popen([subtitle_exe_path])
+                    self.log("已启动字幕导入工具")
+                else:
+                    # 如果没有独立exe，提示用户
+                    self.log("未找到字幕导入工具exe文件")
+                    messagebox.showinfo("提示", "字幕导入功能需要独立的exe文件\n请联系开发者获取完整版本")
+            else:
+                # 如果是源码运行，启动Python脚本
+                base_path = os.path.dirname(__file__)
+                subtitle_tool_path = os.path.join(base_path, "字幕导入", "srt_subtitle_importer.py")
+                
+                if os.path.exists(subtitle_tool_path):
+                    subprocess.Popen([sys.executable, subtitle_tool_path])
+                    self.log("已启动字幕导入工具")
+                else:
+                    self.log("错误: 未找到字幕导入工具")
+                    messagebox.showerror("错误", "未找到字幕导入工具")
+                
+        except Exception as e:
+            self.log(f"启动字幕导入工具失败: {e}")
+            messagebox.showerror("错误", f"启动字幕导入工具失败: {e}")
 
 def main():
     """主函数"""

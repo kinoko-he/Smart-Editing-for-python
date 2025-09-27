@@ -1,0 +1,6 @@
+# SRT字幕自动导入工具依赖库
+pymiere>=1.4.0
+pyautogui>=0.9.54
+keyboard>=0.13.5
+Pillow>=8.0.0
+pyperclip>=1.8.2
